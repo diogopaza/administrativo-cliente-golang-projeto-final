@@ -1,20 +1,24 @@
 package controllers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
-	"database/sql"
+	"lupatini/config"
 	"lupatini/models"
 	"net/http"
-	"lupatini/config"
+	"os"
+
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq" //postgresql
 )
 
 var connectingDB *sql.DB
-func init(){
-	connectingDB = config.DB()		
+
+func init() {
+	connectingDB = config.DB()
 }
 
 var ListAlunos = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -83,54 +87,79 @@ var ListAluno = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 })
 
+var AlterImagemAluno = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	//salva imagem do usuario
+
+	file, handler, err := r.FormFile("imagem")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer file.Close()
+	f, err := os.OpenFile("/home/zaptec/img/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer f.Close()
+	io.Copy(f, file)
+	fmt.Println(handler)
+	imagemGravaBanco := "/home/zaptec/img/" + handler.Filename
+	_ = imagemGravaBanco
+
+})
+
 var InsertAluno = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 	var aluno models.Aluno
 
-	body, err := ioutil.ReadAll(r.Body)
+	nome := r.FormValue("nome")
+	fmt.Println(nome)
+
+	file, handler, err := r.FormFile("selectedFile")
 	if err != nil {
-		panic(err)
-	}
-
-	err = json.Unmarshal(body, &aluno)
-
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(aluno)
-
-	/*
-		//salva imagem do usuario
-		file, handler, err := r.FormFile("imagem")
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		defer file.Close()
-		f, err := os.OpenFile("/home/zaptec/img/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		defer f.Close()
-		io.Copy(f, file)
-
-		imagemGravaBanco := "/home/zaptec/img/"+handler.Filename
-	*/
-	sqlQuery := "INSERT INTO public.aluno(nome,email,senha,profissao,celular,telefone,sexo,cpf,imagem) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)"
-	row, err := connectingDB.Exec(sqlQuery, aluno.Nome, aluno.Email,
-		aluno.Senha, aluno.Profissao, aluno.Celular, aluno.Telefone,
-		aluno.Sexo, aluno.Cpf, aluno.Imagem)
-	_ = row
-	if err != nil {
-		fmt.Println("Erro ao inserir aluno")
-		fmt.Println(err)
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.WriteHeader(400)
+		fmt.Println("1:", err)
 		return
-
 	}
+	defer file.Close()
+	f, err := os.OpenFile("/home/zaptec/img/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		fmt.Println("2", err)
+		return
+	}
+	defer f.Close()
+	io.Copy(f, file)
+	fmt.Println(handler.Filename)
+	imagemGravaBanco := "/home/zaptec/img/" + handler.Filename
+	_ = imagemGravaBanco
+	/*
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			panic(err)
+		}
 
+		err = json.Unmarshal(body, &aluno)
+
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println(aluno)
+
+		sqlQuery := "INSERT INTO public.aluno(nome,email,senha,profissao,celular,telefone,sexo,cpf,imagem) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)"
+		row, err := connectingDB.Exec(sqlQuery, aluno.Nome, aluno.Email,
+			aluno.Senha, aluno.Profissao, aluno.Celular, aluno.Telefone,
+			aluno.Sexo, aluno.Cpf, aluno.Imagem)
+		_ = row
+		if err != nil {
+			fmt.Println("Erro ao inserir aluno")
+			fmt.Println(err)
+			w.WriteHeader(400)
+			return
+
+		}
+	*/
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(201)
 	json.NewEncoder(w).Encode(aluno)
