@@ -10,6 +10,7 @@ import (
 	"lupatini/models"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq" //postgresql
@@ -37,7 +38,7 @@ var ListAlunos = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		fmt.Println(" next alunos")
 		err = rows.Scan(&aluno.Id, &aluno.Nome, &aluno.Email, &aluno.Senha, &aluno.Profissao,
-			&aluno.Celular, &aluno.Telefone, &aluno.Sexo, &aluno.Cpf, &aluno.Imagem)
+			&aluno.Celular, &aluno.Telefone, &aluno.Sexo, &aluno.Cpf, &aluno.Imagem, &aluno.Nascimento)
 		if err != nil {
 			fmt.Println("Erro ao listar alunos")
 			w.Header().Set("Content-Type", "application/json; charset=UTF-8")
@@ -113,53 +114,53 @@ var AlterImagemAluno = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 var InsertAluno = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 	var aluno models.Aluno
-
+	var dataNascimentoFinal string
+	var imagemGravaBanco string
 	nome := r.FormValue("nome")
 	fmt.Println(nome)
 
+	json.Unmarshal([]byte(nome), &aluno)
+	fmt.Println(aluno)
+
+	dataNascimento := strings.Split(aluno.Nascimento, "/")
+
+	for i := range dataNascimento {
+
+		dataNascimentoFinal += dataNascimento[i]
+		if i < 2 {
+			dataNascimentoFinal = dataNascimentoFinal + "-"
+		}
+	}
+	fmt.Println(dataNascimentoFinal)
+
 	file, handler, err := r.FormFile("selectedFile")
 	if err != nil {
-		fmt.Println("1:", err)
-		return
+		fmt.Println("Erro ao abrir arquivo")
+
 	}
 	defer file.Close()
 	f, err := os.OpenFile("/home/zaptec/img/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
-		fmt.Println("2", err)
-		return
+		fmt.Println("Erro ao criar arquivo", err)
 	}
 	defer f.Close()
 	io.Copy(f, file)
 	fmt.Println(handler.Filename)
-	imagemGravaBanco := "/home/zaptec/img/" + handler.Filename
-	_ = imagemGravaBanco
-	/*
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			panic(err)
-		}
+	imagemGravaBanco = "/home/zaptec/img/" + handler.Filename
 
-		err = json.Unmarshal(body, &aluno)
+	sqlQuery := "INSERT INTO public.aluno(nome,email,senha,profissao,celular,telefone,sexo,cpf,imagem,data_nascimento) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)"
+	row, err := connectingDB.Exec(sqlQuery, aluno.Nome, aluno.Email,
+		aluno.Senha, aluno.Profissao, aluno.Celular, aluno.Telefone,
+		aluno.Sexo, aluno.Cpf, imagemGravaBanco, dataNascimentoFinal)
+	_ = row
+	if err != nil {
+		fmt.Println("Erro ao inserir aluno")
+		fmt.Println(err)
+		w.WriteHeader(400)
+		return
 
-		if err != nil {
-			panic(err)
-		}
+	}
 
-		fmt.Println(aluno)
-
-		sqlQuery := "INSERT INTO public.aluno(nome,email,senha,profissao,celular,telefone,sexo,cpf,imagem) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)"
-		row, err := connectingDB.Exec(sqlQuery, aluno.Nome, aluno.Email,
-			aluno.Senha, aluno.Profissao, aluno.Celular, aluno.Telefone,
-			aluno.Sexo, aluno.Cpf, aluno.Imagem)
-		_ = row
-		if err != nil {
-			fmt.Println("Erro ao inserir aluno")
-			fmt.Println(err)
-			w.WriteHeader(400)
-			return
-
-		}
-	*/
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(201)
 	json.NewEncoder(w).Encode(aluno)

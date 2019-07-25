@@ -10,4 +10,5 @@ type Usuario struct {
 	Sexo    string `json:"sexo"`
 	Perfil  string `json:"perfil"`
 	Token   string `json: token `
+	Imagem  string `json: imagem`
 }
