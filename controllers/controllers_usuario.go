@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"lupatini/models"
 	"net/http"
 	"os"
@@ -18,7 +17,6 @@ var InsertUsuario = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 
 	var imagemGravaBanco string
 	dataUsuario := r.FormValue("dataUsuario")
-	fmt.Println(dataUsuario)
 
 	json.Unmarshal([]byte(dataUsuario), &usuario)
 	fmt.Println(usuario)
@@ -26,19 +24,20 @@ var InsertUsuario = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	//salva imagem do usuario
 	file, handler, err := r.FormFile("selectedFile")
 	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer file.Close()
-	f, err := os.OpenFile("/home/zaptec/img/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer f.Close()
-	io.Copy(f, file)
+		fmt.Println("Arquivo vazio")
 
-	imagemGravaBanco = "/home/zaptec/img/" + handler.Filename
+	} else {
+		defer file.Close()
+		f, err := os.OpenFile("/home/zaptec/img/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
+		if err != nil {
+			fmt.Println("Não é possível criar o arquivo")
+		}
+		defer f.Close()
+		io.Copy(f, file)
+
+		imagemGravaBanco = "/home/zaptec/img/" + handler.Filename
+
+	}
 
 	sqlQuery := "INSERT INTO public.usuario(nome,email,senha,cpf,celular,sexo,perfil_id,token,imagem) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)"
 	row, err := connectingDB.Exec(sqlQuery, usuario.Nome, usuario.Email,
@@ -86,7 +85,6 @@ var ListCategoriaUsuario = http.HandlerFunc(func(w http.ResponseWriter, r *http.
 
 	vars := mux.Vars(r)
 	id := vars["id"]
-	fmt.Println(id)
 	usuario := models.Usuario{}
 	usuarios := []models.Usuario{}
 	perfil := models.Perfil{}
@@ -94,7 +92,6 @@ var ListCategoriaUsuario = http.HandlerFunc(func(w http.ResponseWriter, r *http.
 		" INNER JOIN perfil" +
 		" ON perfil.id=usuario.perfil_id" +
 		" WHERE perfil.id=$1"
-	fmt.Println(sql)
 	rows, err := connectingDB.Query(sql, id)
 	if err != nil {
 		fmt.Println("Não foi pesquisar usuários")
@@ -103,8 +100,9 @@ var ListCategoriaUsuario = http.HandlerFunc(func(w http.ResponseWriter, r *http.
 	}
 	for rows.Next() {
 
-		err = rows.Scan(&usuario.Id, &usuario.Nome, &usuario.Email, &usuario.Senha, &usuario.Cpf, &usuario.Celular,
-			&usuario.Sexo, &usuario.Perfil, &usuario.Token, &perfil.Id, &perfil.Nome)
+		err = rows.Scan(&usuario.Id, &usuario.Nome, &usuario.Email, &usuario.Senha, &usuario.Sexo,
+			&usuario.Perfil, &usuario.Token, &usuario.Imagem,
+			&usuario.Cpf, &usuario.Celular, &perfil.Id, &perfil.Nome)
 		if err != nil {
 			fmt.Println("Erro ao listar usarios")
 			w.WriteHeader(400)
@@ -129,17 +127,15 @@ var ListUsuario = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	rows, err := connectingDB.Query("SELECT * FROM public.usuario WHERE id=$1", id)
 	if err != nil {
 		fmt.Println("Não foi pesquisar usuários")
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(400)
 		panic(err)
 	}
 	for rows.Next() {
 
 		err = rows.Scan(&usuario.Id, &usuario.Nome, &usuario.Email, &usuario.Senha,
-			&usuario.Cpf, &usuario.Celular, &usuario.Sexo, &usuario.Perfil, &usuario.Token)
+			&usuario.Sexo, &usuario.Perfil, &usuario.Token, &usuario.Imagem, &usuario.Cpf, &usuario.Celular)
 		if err != nil {
 			fmt.Println("Erro ao listar usarios")
-			w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 			w.WriteHeader(400)
 			panic(err)
 		}
@@ -163,10 +159,11 @@ var ListUsuarios = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 
 	for rows.Next() {
 		fmt.Println(" next usuários")
-		err = rows.Scan(&usuario.Id, &usuario.Nome, &usuario.Email, &usuario.Senha,
-			&usuario.Cpf, &usuario.Celular, &usuario.Sexo, &usuario.Perfil, &usuario.Token)
+		err = rows.Scan(&usuario.Id, &usuario.Nome, &usuario.Email, &usuario.Senha, &usuario.Sexo,
+			&usuario.Perfil, &usuario.Token, &usuario.Imagem, &usuario.Cpf, &usuario.Celular)
 		if err != nil {
 			fmt.Println("Erro ao listar usarios")
+			fmt.Println(err)
 		}
 
 		usuarios = append(usuarios, usuario)
@@ -180,29 +177,20 @@ var ListUsuarios = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 })
 
 var AlterUsuario = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
+	fmt.Println("estou alter")
 	var usuario models.Usuario
 
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	dataUsuario := r.FormValue("dataUsuario")
 
-	err = json.Unmarshal(body, &usuario)
-
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	json.Unmarshal([]byte(dataUsuario), &usuario)
 	fmt.Println(usuario)
-	row, err := connectingDB.Prepare("UPDATE public.usuario SET nome=$1,email=$2,senha=$3,cpf=$4,celular=$5,sexo=$6,perfil_id=$7,token=$8 WHERE id=$9")
+	row, err := connectingDB.Prepare("UPDATE public.usuario SET nome=$1,email=$2,senha=$3,cpf=$4,celular=$5,sexo=$6,perfil_id=$7,imagem=$8 WHERE id=$9")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	row.Exec(usuario.Nome, usuario.Email, usuario.Senha, usuario.Cpf, usuario.Celular,
-		usuario.Sexo, usuario.Perfil, usuario.Token, usuario.Id)
+		usuario.Sexo, usuario.Perfil, usuario.Imagem, usuario.Id)
 	if err != nil {
 		fmt.Println(err)
 		return
