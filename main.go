@@ -49,6 +49,14 @@ func main() {
 	router.Handle("/usuario", controllers.InsertUsuario).Methods("POST")
 	router.Handle("/usuario", controllers.AlterUsuario).Methods("PUT")
 
+	//endpoints local
+	router.Handle("/usuarios", controllers.ListUsuarios).Methods("GET")
+	router.Handle("/usuario/{id}", controllers.ListUsuario).Methods("GET")
+	router.Handle("/usuario-categoria/{id}", controllers.ListCategoriaUsuario).Methods("GET")
+	router.Handle("/usuario/{id}", controllers.DeleteUsuario).Methods("DELETE")
+	router.Handle("/usuario", controllers.InsertUsuario).Methods("POST")
+	router.Handle("/usuario", controllers.AlterUsuario).Methods("PUT")
+
 	//endpoints system
 	router.Handle("/login", http_handlers.GetLogin).Methods("POST")
 

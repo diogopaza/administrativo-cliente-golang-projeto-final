@@ -9,7 +9,6 @@ import (
 	"lupatini/models"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq" //postgresql
@@ -113,26 +112,24 @@ var AlterImagemAluno = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 var InsertAluno = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 	var aluno models.Aluno
-	//var dataNascimentoFinal string
 	var imagemGravaBanco string
-	//var cont = 2
 	dataAluno := r.FormValue("aluno")
 	fmt.Println(dataAluno)
 
 	json.Unmarshal([]byte(dataAluno), &aluno)
 	fmt.Println(aluno)
-
-	dataNascimento := strings.Split(aluno.Nascimento, "T")
 	/*
-		for i := range dataNascimento {
+		dataNascimento := strings.Split(aluno.Nascimento, "T")
 
-			dataNascimentoFinal += dataNascimento[cont]
-			cont--
-			if i < 2 {
-				dataNascimentoFinal = dataNascimentoFinal + "-"
-			}
-		}*/
-	fmt.Println(dataNascimento[0])
+			for i := range dataNascimento {
+
+				dataNascimentoFinal += dataNascimento[cont]
+				cont--
+				if i < 2 {
+					dataNascimentoFinal = dataNascimentoFinal + "-"
+				}
+			}*/
+	fmt.Println(aluno.Nascimento)
 
 	file, handler, err := r.FormFile("selectedFile")
 	if err != nil {
@@ -152,7 +149,7 @@ var InsertAluno = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	sqlQuery := "INSERT INTO public.aluno(nome,email,senha,profissao,celular,telefone,sexo,cpf,imagem,data_nascimento) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)"
 	row, err := connectingDB.Exec(sqlQuery, aluno.Nome, aluno.Email,
 		aluno.Senha, aluno.Profissao, aluno.Celular, aluno.Telefone,
-		aluno.Sexo, aluno.Cpf, imagemGravaBanco, dataNascimento[0])
+		aluno.Sexo, aluno.Cpf, imagemGravaBanco, aluno.Nascimento)
 	_ = row
 	if err != nil {
 		fmt.Println("Erro ao inserir aluno")
