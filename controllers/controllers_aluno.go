@@ -112,24 +112,12 @@ var AlterImagemAluno = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 var InsertAluno = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 	var aluno models.Aluno
-	var imagemGravaBanco string
 	dataAluno := r.FormValue("aluno")
 	fmt.Println(dataAluno)
 
 	json.Unmarshal([]byte(dataAluno), &aluno)
 	fmt.Println(aluno)
-	/*
-		dataNascimento := strings.Split(aluno.Nascimento, "T")
-
-			for i := range dataNascimento {
-
-				dataNascimentoFinal += dataNascimento[cont]
-				cont--
-				if i < 2 {
-					dataNascimentoFinal = dataNascimentoFinal + "-"
-				}
-			}*/
-	fmt.Println(aluno.Nascimento)
+	fmt.Println("nascimento: ", aluno.Nascimento)
 
 	file, handler, err := r.FormFile("selectedFile")
 	if err != nil {
@@ -143,13 +131,13 @@ var InsertAluno = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		}
 		defer f.Close()
 		io.Copy(f, file)
-		imagemGravaBanco = "/home/zaptec/img/" + handler.Filename
+		aluno.Imagem = "/home/zaptec/img/" + handler.Filename
 	}
 
 	sqlQuery := "INSERT INTO public.aluno(nome,email,senha,profissao,celular,telefone,sexo,cpf,imagem,data_nascimento) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)"
 	row, err := connectingDB.Exec(sqlQuery, aluno.Nome, aluno.Email,
 		aluno.Senha, aluno.Profissao, aluno.Celular, aluno.Telefone,
-		aluno.Sexo, aluno.Cpf, imagemGravaBanco, aluno.Nascimento)
+		aluno.Sexo, aluno.Cpf, aluno.Imagem, aluno.Nascimento)
 	_ = row
 	if err != nil {
 		fmt.Println("Erro ao inserir aluno")

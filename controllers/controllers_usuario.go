@@ -15,7 +15,6 @@ var InsertUsuario = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 
 	var usuario models.Usuario
 
-	var imagemGravaBanco string
 	dataUsuario := r.FormValue("dataUsuario")
 
 	json.Unmarshal([]byte(dataUsuario), &usuario)
@@ -25,7 +24,6 @@ var InsertUsuario = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	file, handler, err := r.FormFile("selectedFile")
 	if err != nil {
 		fmt.Println("Arquivo vazio")
-
 	} else {
 		defer file.Close()
 		f, err := os.OpenFile("/home/zaptec/img/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
@@ -35,13 +33,13 @@ var InsertUsuario = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		defer f.Close()
 		io.Copy(f, file)
 
-		imagemGravaBanco = "/home/zaptec/img/" + handler.Filename
-
+		usuario.Imagem = "/home/zaptec/img/" + handler.Filename
 	}
 
-	sqlQuery := "INSERT INTO public.usuario(nome,email,senha,cpf,celular,sexo,perfil_id,token,imagem) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)"
+	sqlQuery := "INSERT INTO public.usuario(nome,email,senha,sexo,perfil_id,token," +
+		"imagem,cpf,celular) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)"
 	row, err := connectingDB.Exec(sqlQuery, usuario.Nome, usuario.Email,
-		usuario.Senha, usuario.Cpf, usuario.Celular, usuario.Sexo, usuario.Perfil, &usuario.Token, imagemGravaBanco)
+		usuario.Senha, usuario.Sexo, usuario.Perfil, usuario.Token, usuario.Imagem, &usuario.Cpf, &usuario.Celular)
 	if err != nil {
 		fmt.Println("Erro ao inserir dados")
 		fmt.Println(err)
@@ -58,21 +56,21 @@ var DeleteUsuario = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 
 	vars := mux.Vars(r)
 	id := vars["id"]
-
-	sqlQuery := "DELETE FROM public.usuario WHERE id = $1"
+	fmt.Println("id: ", id)
+	sqlQuery := "DELETE FROM public.usuario WHERE id=$1"
 	rows, err := connectingDB.Exec(sqlQuery, id)
 
 	if err != nil {
+
 		fmt.Println("Erro ao excluir usuario")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.WriteHeader(400)
+		w.WriteHeader(500)
+		return
 
 	}
 	rowsDeleted, err := rows.RowsAffected()
 	if err != nil {
 		fmt.Println("Erro ao percorrer linha a ser excluida")
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.WriteHeader(400)
+		w.WriteHeader(500)
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
@@ -184,13 +182,30 @@ var AlterUsuario = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 
 	json.Unmarshal([]byte(dataUsuario), &usuario)
 	fmt.Println(usuario)
-	row, err := connectingDB.Prepare("UPDATE public.usuario SET nome=$1,email=$2,senha=$3,cpf=$4,celular=$5,sexo=$6,perfil_id=$7,imagem=$8 WHERE id=$9")
+
+	//salva imagem do usuario
+	file, handler, err := r.FormFile("imagem")
+	if err != nil {
+		fmt.Println("Arquivo vazio")
+	} else {
+		defer file.Close()
+		f, err := os.OpenFile("/home/zaptec/img/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
+		if err != nil {
+			fmt.Println("Não é possível criar o arquivo")
+		}
+		defer f.Close()
+		io.Copy(f, file)
+
+		usuario.Imagem = "/home/zaptec/img/" + handler.Filename
+	}
+
+	row, err := connectingDB.Prepare("UPDATE public.usuario SET nome=$1,email=$2,senha=$3,sexo=$4,perfil_id=$5,token=$6,imagem=$7,cpf=$8,celular=$9 WHERE id=$10")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	row.Exec(usuario.Nome, usuario.Email, usuario.Senha, usuario.Cpf, usuario.Celular,
-		usuario.Sexo, usuario.Perfil, usuario.Imagem, usuario.Id)
+	row.Exec(usuario.Nome, usuario.Email, usuario.Senha, usuario.Sexo, usuario.Perfil,
+		usuario.Token, usuario.Imagem, usuario.Cpf, usuario.Celular, usuario.Id)
 	if err != nil {
 		fmt.Println(err)
 		return
